@@ -4,6 +4,7 @@ import { useState, type KeyboardEvent } from 'react';
 
 import { isDefined } from '@ui/utilities/utils/isDefined';
 
+import { dropdownItemActivation } from './dropdownItemActivation';
 import { getDropdownItemLabel } from './getDropdownItemLabel';
 import { getDropdownItems } from './getDropdownItems';
 import { getDropdownRows } from './getDropdownRows';
@@ -93,7 +94,10 @@ export const useDropdownKeyboardNavigation = () => {
 
     if (isDefined(searchTarget)) {
       event.preventDefault();
-      searchTarget.click();
+      dropdownItemActivation.activate({
+        item: searchTarget,
+        event: event.nativeEvent,
+      });
       return;
     }
 
