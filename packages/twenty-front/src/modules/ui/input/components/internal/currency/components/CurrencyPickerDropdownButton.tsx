@@ -64,7 +64,7 @@ export const CurrencyPickerDropdownButton = ({
                 aria-label={t`Currency`}
               >
                 <CurrencyPicker.Options
-                  aria-label={t`Currency`}
+                  listLabel={t`Currency`}
                   searchLabel={t`Search`}
                   emptyLabel={t`No results`}
                 />
