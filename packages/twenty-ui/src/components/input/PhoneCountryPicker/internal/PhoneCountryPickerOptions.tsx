@@ -17,6 +17,7 @@ import { usePhoneCountryPickerContextOrThrow } from './usePhoneCountryPickerCont
 export const PhoneCountryPickerOptions = ({
   // oxlint-disable lingui/no-unlocalized-strings -- Applications pass translated labels; these preserve the public UI fallback.
   searchLabel = 'Search',
+  listLabel = 'Countries',
   emptyLabel = 'No results',
   // oxlint-enable lingui/no-unlocalized-strings
   disabled: optionsDisabled = false,
@@ -67,7 +68,7 @@ export const PhoneCountryPickerOptions = ({
           <Dropdown.Section scrollable>
             <Dropdown.SelectionGroup
               id={selectionId}
-              aria-label={searchLabel}
+              aria-label={listLabel}
               value={value}
               onValueChange={onValueChange}
               closeOnSelect={closeOnSelect}
