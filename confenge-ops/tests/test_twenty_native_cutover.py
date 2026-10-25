@@ -52,14 +52,18 @@ def metadata_field(
     label: str | None = None,
     description: str | None = None,
     options: list[dict] | None = None,
+    universal_identifier: str | None = None,
 ) -> dict:
-    return {
+    result = {
         "id": f"field-{name}",
         "name": name,
         "label": label or name,
         "description": description,
         "options": options or [],
     }
+    if universal_identifier:
+        result["universalIdentifier"] = universal_identifier
+    return result
 
 
 class FakeClient:
@@ -85,6 +89,11 @@ class FakeClient:
             metadata_field("assignee", description="Task assignee"),
             metadata_field("status", description="Task status"),
             metadata_field("dueAt", description="Task due date"),
+            metadata_field(
+                "cutoverStageBeforeDone",
+                description="Application-owned stage memory",
+                universal_identifier=cutover.CUTOVER_STAGE_MEMORY_FIELD_UID,
+            ),
         ]
         self.calls: list[tuple[str, object, str]] = []
 
@@ -142,6 +151,19 @@ class FakeClient:
                     "isActive": True,
                 },
             ]
+        if path.startswith("/rest/metadata/viewFields?fieldMetadataId="):
+            return [
+                {
+                    "id": "stage-memory-index",
+                    "fieldMetadataId": "field-cutoverStageBeforeDone",
+                    "isVisible": True,
+                },
+                {
+                    "id": "stage-memory-record",
+                    "fieldMetadataId": "field-cutoverStageBeforeDone",
+                    "isVisible": True,
+                },
+            ]
         if path.startswith("/rest/metadata/viewFields?"):
             return [
                 {
@@ -169,6 +191,13 @@ class FakeClient:
             field_id = path.rsplit("/", 1)[-1]
             return next(item for item in self.fields if item["id"] == field_id)
         if method == "GET" and path.startswith("/rest/metadata/viewFields/"):
+            view_field_id = path.rsplit("/", 1)[-1]
+            if view_field_id in {"stage-memory-index", "stage-memory-record"}:
+                return {
+                    "id": view_field_id,
+                    "fieldMetadataId": "field-cutoverStageBeforeDone",
+                    "isVisible": True,
+                }
             name = path.rsplit("/", 1)[-1].removeprefix("view-")
             return {
                 "id": f"view-{name}",
@@ -202,7 +231,7 @@ class AssignmentEvidenceTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with self.assertRaisesRegex(cutover.CutoverError, "must use HTTPS"):
+            with self.assertRaisesRegex(cutover.CutoverError, "HTTPS.*loopback"):
                 cutover.credentials(credentials_path)
 
     def test_credentials_reject_wrong_https_hostname(self):
@@ -219,8 +248,27 @@ class AssignmentEvidenceTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with self.assertRaisesRegex(cutover.CutoverError, "hostname"):
+            with self.assertRaisesRegex(cutover.CutoverError, "canonical HTTPS"):
                 cutover.credentials(credentials_path)
+
+    def test_credentials_allow_explicit_http_loopback_for_host_local_api(self):
+        with tempfile.TemporaryDirectory() as directory:
+            credentials_path = Path(directory) / "admin.json"
+            credentials_path.write_text(
+                json.dumps(
+                    {
+                        "base_url": "http://127.0.0.1:3000",
+                        "api_key": "host-local-token",
+                        "workspace_id": "workspace-target",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            client, workspace_id = cutover.credentials(credentials_path)
+
+        self.assertEqual(client.base_url, "http://127.0.0.1:3000")
+        self.assertEqual(workspace_id, "workspace-target")
 
     def test_uses_only_explicit_assigned_type_and_ignores_names(self):
         assigned, user_id = cutover.assignment_evidence(source_fixture())
@@ -327,6 +375,17 @@ class ConfigurationPlanTests(unittest.TestCase):
                 )
             ],
         )
+
+    def test_hides_both_app_owned_stage_memory_view_fields(self):
+        plan = self.build_plan()
+        memory_patches = [
+            item
+            for item in plan.widget_fields
+            if item[0] in {"stage-memory-index", "stage-memory-record"}
+        ]
+
+        self.assertEqual(len(memory_patches), 2)
+        self.assertTrue(all(item[2] == {"isVisible": False} for item in memory_patches))
 
     def test_apply_executes_exactly_the_planned_patches(self):
         client = FakeClient()

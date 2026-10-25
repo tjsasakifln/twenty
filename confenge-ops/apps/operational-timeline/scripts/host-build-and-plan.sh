@@ -27,7 +27,7 @@ python3 "$resolved_app_dir/scripts/test_deploy_origin_policy.py" >/dev/null
 private_env="$(mktemp)"
 cleanup() {
   rm -f "$private_env"
-  unset TWENTY_DEPLOY_API_KEY CONFENGE_TIMELINE_READ_OBJECT_UNIVERSAL_IDENTIFIERS
+  unset TWENTY_DEPLOY_API_KEY TWENTY_REMOTE_URL CONFENGE_TIMELINE_READ_OBJECT_UNIVERSAL_IDENTIFIERS
   rm -rf -- "$resolved_app_dir/node_modules" "$resolved_app_dir/.yarn" "$resolved_app_dir/.twenty"
 }
 trap cleanup EXIT
@@ -87,7 +87,7 @@ PY
 # The file is root-only and removed by the EXIT trap. Do not enable shell tracing.
 # shellcheck disable=SC1090
 . "$private_env"
-export TWENTY_DEPLOY_API_KEY CONFENGE_TIMELINE_READ_OBJECT_UNIVERSAL_IDENTIFIERS
+export TWENTY_DEPLOY_API_KEY TWENTY_REMOTE_URL CONFENGE_TIMELINE_READ_OBJECT_UNIVERSAL_IDENTIFIERS
 
 install -d -m 0700 "$(dirname "$PLAN_OUTPUT")"
 install -d -m 0700 /root/.twenty
@@ -111,6 +111,7 @@ run_sdk() {
 run_sdk 'corepack enable && yarn install --immutable && yarn test && yarn typecheck && yarn build && yarn deploy:check'
 
 run_sdk 'corepack enable && yarn twenty remote:add --as '"$REMOTE_NAME"' --url "$TWENTY_REMOTE_URL" --api-key "$TWENTY_DEPLOY_API_KEY"'
+run_sdk 'corepack enable && yarn twenty --remote '"$REMOTE_NAME"' remote:status'
 
 run_sdk 'corepack enable && yarn twenty --remote '"$REMOTE_NAME"' plan . --no-delete' | tee "$PLAN_OUTPUT"
 chmod 0600 "$PLAN_OUTPUT"

@@ -1,6 +1,7 @@
 import { defineFrontComponent } from 'twenty-sdk/define';
 import { AppPath, navigate } from 'twenty-sdk/front-component';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTheme } from 'twenty-ui/theme-constants';
 
 import {
   APP_DESCRIPTION,
@@ -23,29 +24,17 @@ import {
   type TimelineTask,
 } from 'src/lib/timeline';
 
-const palette = {
-  ink: '#172033',
-  muted: '#5f6b7c',
-  line: '#dce2ea',
-  panel: '#ffffff',
-  canvas: '#f6f8fb',
-  accent: '#3659e3',
-  accentSoft: '#dfe6ff',
-  milestone: '#b43b82',
-  danger: '#b42318',
-};
-
-const buttonStyle = {
-  border: `1px solid ${palette.line}`,
-  borderRadius: 7,
-  background: palette.panel,
-  color: palette.ink,
-  cursor: 'pointer',
-  fontSize: 12,
-  fontWeight: 600,
-  minHeight: 32,
-  padding: '6px 10px',
-} as const;
+const themePalette = (theme: ReturnType<typeof useTheme>) => ({
+  ink: theme.font.color.primary,
+  muted: theme.font.color.secondary,
+  line: theme.border.color.light,
+  panel: theme.background.primary,
+  canvas: theme.background.secondary,
+  accent: theme.accent.primary,
+  accentSoft: theme.background.transparent.blue,
+  milestone: theme.accent.secondary,
+  danger: theme.font.color.danger,
+});
 
 const safeMessage = (error: unknown) =>
   error instanceof Error ? error.message : 'Não foi possível carregar o cronograma.';
@@ -72,6 +61,19 @@ const relatedLabel = (
 };
 
 const OperationalTimeline = () => {
+  const theme = useTheme();
+  const palette = themePalette(theme);
+  const buttonStyle = {
+    border: `1px solid ${palette.line}`,
+    borderRadius: theme.border.radius.sm,
+    background: palette.panel,
+    color: palette.ink,
+    cursor: 'pointer',
+    fontSize: 12,
+    fontWeight: 600,
+    minHeight: 32,
+    padding: '6px 10px',
+  } as const;
   const [payload, setPayload] = useState<TimelinePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -419,7 +421,7 @@ const OperationalTimeline = () => {
                     role="cell"
                     style={{
                       backgroundImage:
-                        'linear-gradient(to right, transparent 24.8%, #edf0f5 25%, transparent 25.2%, transparent 49.8%, #edf0f5 50%, transparent 50.2%, transparent 74.8%, #edf0f5 75%, transparent 75.2%)',
+                        `linear-gradient(to right, transparent 24.8%, ${palette.line} 25%, transparent 25.2%, transparent 49.8%, ${palette.line} 50%, transparent 50.2%, transparent 74.8%, ${palette.line} 75%, transparent 75.2%)`,
                       minHeight: 58,
                       padding: '0 18px',
                       position: 'relative',
@@ -457,7 +459,7 @@ const OperationalTimeline = () => {
                           background: invalidInterval
                             ? palette.danger
                             : palette.milestone,
-                          border: '2px solid #fff',
+                          border: `2px solid ${palette.panel}`,
                           boxShadow: '0 0 0 1px currentColor',
                           cursor: 'pointer',
                           height: 14,

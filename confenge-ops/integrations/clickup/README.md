@@ -44,6 +44,10 @@ the existing administrator credential. The deployed daily backup includes
 from `/etc/confenge-gestao/` when present. Restore the marker with the database
 before permitting importer execution. Keep the original source export as a
 separate private archive; it is evidence for reconciliation, not a live sync.
+The deployed backup also preserves `apps/operational-timeline` source and its
+lockfile, excluding installed dependencies, SDK output and build caches. The
+application's installed metadata and storage remain in the database and storage
+recovery set. Keep the task-event gate off until post-restore validation passes.
 
 ## Snapshot inputs
 

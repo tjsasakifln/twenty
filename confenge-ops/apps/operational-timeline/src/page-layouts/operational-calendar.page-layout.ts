@@ -20,7 +20,7 @@ export default definePageLayout({
       universalIdentifier: CALENDAR_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER,
       title: 'Agenda operacional',
       position: 0,
-      icon: 'IconCalendarMonth',
+      icon: 'IconCalendar',
       layoutMode: PageLayoutTabLayoutMode.VERTICAL_LIST,
       widgets: [
         {

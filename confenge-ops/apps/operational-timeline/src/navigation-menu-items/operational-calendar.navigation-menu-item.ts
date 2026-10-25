@@ -11,8 +11,8 @@ import {
 export default defineNavigationMenuItem({
   universalIdentifier: CALENDAR_NAVIGATION_UNIVERSAL_IDENTIFIER,
   name: 'Agenda operacional',
-  icon: 'IconCalendarMonth',
-  position: 41,
+  icon: 'IconCalendar',
+  position: -1997.8,
   type: NavigationMenuItemType.PAGE_LAYOUT,
   pageLayoutUniversalIdentifier: CALENDAR_PAGE_LAYOUT_UNIVERSAL_IDENTIFIER,
 });

@@ -13,7 +13,7 @@ export default defineNavigationMenuItem({
   universalIdentifier: TIMELINE_NAVIGATION_UNIVERSAL_IDENTIFIER,
   name: APP_DISPLAY_NAME,
   icon: 'IconTimeline',
-  position: 40,
+  position: -1997.6,
   type: NavigationMenuItemType.PAGE_LAYOUT,
   pageLayoutUniversalIdentifier: TIMELINE_PAGE_LAYOUT_UNIVERSAL_IDENTIFIER,
 });

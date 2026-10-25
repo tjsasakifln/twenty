@@ -1,6 +1,7 @@
 import { defineFrontComponent } from 'twenty-sdk/define';
 import { AppPath, navigate } from 'twenty-sdk/front-component';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTheme } from 'twenty-ui/theme-constants';
 
 import {
   CALENDAR_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER,
@@ -22,29 +23,22 @@ import {
 import { loadTimelinePayload } from 'src/lib/timeline-api';
 import { BRT_TIME_ZONE, toTimelineTask } from 'src/lib/timeline';
 
-const colors = {
-  ink: '#172033',
-  muted: '#617087',
-  border: '#dce2ea',
-  surface: '#fff',
-  canvas: '#f6f8fb',
-  accent: '#3659e3',
-  allDay: '#8c3aa6',
-  today: '#eef2ff',
-  danger: '#b42318',
-};
-
-const buttonStyle = {
-  background: colors.surface,
-  border: `1px solid ${colors.border}`,
-  borderRadius: 7,
-  color: colors.ink,
-  cursor: 'pointer',
-  fontSize: 12,
-  fontWeight: 600,
-  minHeight: 32,
-  padding: '6px 10px',
-} as const;
+const themeColors = (theme: ReturnType<typeof useTheme>) => ({
+  ink: theme.font.color.primary,
+  muted: theme.font.color.secondary,
+  faint: theme.font.color.tertiary,
+  inverted: theme.font.color.inverted,
+  border: theme.border.color.light,
+  surface: theme.background.primary,
+  canvas: theme.background.secondary,
+  subtle: theme.background.tertiary,
+  accent: theme.accent.primary,
+  allDay: theme.accent.secondary,
+  event: theme.background.transparent.blue,
+  allDayEvent: theme.background.transparent.medium,
+  today: theme.background.transparent.blue,
+  danger: theme.font.color.danger,
+});
 
 const weekDayLabels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
@@ -62,6 +56,19 @@ const timeLabel = (event: CalendarEvent) => {
 };
 
 const OperationalCalendar = () => {
+  const theme = useTheme();
+  const colors = themeColors(theme);
+  const buttonStyle = {
+    background: colors.surface,
+    border: `1px solid ${colors.border}`,
+    borderRadius: theme.border.radius.sm,
+    color: colors.ink,
+    cursor: 'pointer',
+    fontSize: 12,
+    fontWeight: 600,
+    minHeight: 32,
+    padding: '6px 10px',
+  } as const;
   const today = useMemo(currentBrtDay, []);
   const [anchorDay, setAnchorDay] = useState(today);
   const [mode, setMode] = useState<'month' | 'week'>('month');
@@ -165,7 +172,7 @@ const OperationalCalendar = () => {
             style={{
               ...buttonStyle,
               background: mode === 'month' ? colors.accent : colors.surface,
-              color: mode === 'month' ? '#fff' : colors.ink,
+              color: mode === 'month' ? colors.inverted : colors.ink,
             }}
             onClick={() => setMode('month')}
           >
@@ -177,7 +184,7 @@ const OperationalCalendar = () => {
             style={{
               ...buttonStyle,
               background: mode === 'week' ? colors.accent : colors.surface,
-              color: mode === 'week' ? '#fff' : colors.ink,
+              color: mode === 'week' ? colors.inverted : colors.ink,
             }}
             onClick={() => setMode('week')}
           >
@@ -236,7 +243,7 @@ const OperationalCalendar = () => {
                 role="columnheader"
                 key={label}
                 style={{
-                  background: '#f0f3f8',
+                  background: colors.subtle,
                   color: colors.muted,
                   fontSize: 11,
                   fontWeight: 700,
@@ -259,7 +266,7 @@ const OperationalCalendar = () => {
                     background: day === today ? colors.today : colors.surface,
                     color: isSameMonth(day, anchorDay)
                       ? colors.ink
-                      : '#98a2b3',
+                      : colors.faint,
                     minHeight: 105,
                     padding: 7,
                   }}
@@ -289,7 +296,9 @@ const OperationalCalendar = () => {
                       onClick={() => void openTask(event.task.id)}
                       title={`${timeLabel(event)} — ${event.task.title}`}
                       style={{
-                        background: event.allDay ? '#f4e7f8' : '#e7ecff',
+                        background: event.allDay
+                          ? colors.allDayEvent
+                          : colors.event,
                         border: 0,
                         borderLeft: `3px solid ${event.allDay ? colors.allDay : colors.accent}`,
                         borderRadius: 4,

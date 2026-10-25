@@ -110,8 +110,12 @@ gate retorna sem carregar variáveis nem escrever tarefas.
 - Datas `YYYY-MM-DD` são tratadas como datas civis, sem conversão UTC.
 - `DATE_TIME` é posicionado e apresentado em `America/Sao_Paulo`.
 - Uma única data nunca vira duração artificial.
-- Paginação usa `data + pageInfo`, segue `starting_after` e aborta em cursor
-  repetido.
+- Paginação usa o envelope REST real `data.<plural> + pageInfo`, segue
+  `starting_after` e aborta em cursor repetido.
+- Leituras REST usam `depth=0`: os IDs escalares necessários continuam
+  disponíveis sem expandir relações fora da role mínima do aplicativo.
+- Cores vêm do tema ativo do Twenty (`twenty-ui`), com contraste equivalente
+  em workspaces claros e escuros.
 - Filtros desconhecidos falham fechados com erro visível em vez de mostrar
   registros fora do escopo.
 - Edição de datas, pai e dependências continua na interface nativa da tarefa.

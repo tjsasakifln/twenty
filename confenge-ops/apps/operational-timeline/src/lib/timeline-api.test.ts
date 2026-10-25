@@ -13,11 +13,11 @@ describe('Twenty REST pagination', () => {
     const get = vi
       .fn()
       .mockResolvedValueOnce({
-        data: [{ id: 'task-1' }, { id: 'task-2' }],
+        data: { tasks: [{ id: 'task-1' }, { id: 'task-2' }] },
         pageInfo: { hasNextPage: true, endCursor: 'cursor-2' },
       } satisfies RestPage)
       .mockResolvedValueOnce({
-        data: [{ id: 'task-3' }],
+        data: { tasks: [{ id: 'task-3' }] },
         pageInfo: { hasNextPage: false, endCursor: 'cursor-3' },
       } satisfies RestPage);
 
@@ -32,10 +32,10 @@ describe('Twenty REST pagination', () => {
       'task-3',
     ]);
     expect(get).toHaveBeenNthCalledWith(1, '/rest/tasks', {
-      query: { limit: 100, depth: 1, starting_after: undefined },
+      query: { limit: 100, depth: 0, starting_after: undefined },
     });
     expect(get).toHaveBeenNthCalledWith(2, '/rest/tasks', {
-      query: { limit: 100, depth: 1, starting_after: 'cursor-2' },
+      query: { limit: 100, depth: 0, starting_after: 'cursor-2' },
     });
   });
 
@@ -87,6 +87,13 @@ describe('Twenty REST pagination', () => {
   it('accepts array and metadata-style items envelopes defensively', () => {
     expect(recordsFromPage([{ id: 'a' }])).toEqual([{ id: 'a' }]);
     expect(recordsFromPage({ items: [{ id: 'b' }] })).toEqual([{ id: 'b' }]);
+  });
+
+  it('fails closed when a data envelope contains no unique collection', () => {
+    expect(() => recordsFromPage({ data: {} })).toThrow('formato inesperado');
+    expect(() =>
+      recordsFromPage({ data: { tasks: [], people: [] } }),
+    ).toThrow('formato inesperado');
   });
 });
 

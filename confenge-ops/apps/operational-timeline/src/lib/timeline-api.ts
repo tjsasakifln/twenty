@@ -11,7 +11,7 @@ import {
 } from 'src/lib/timeline';
 
 export type RestPage = {
-  data?: UnknownRecord[];
+  data?: UnknownRecord[] | Record<string, UnknownRecord[]>;
   items?: UnknownRecord[];
   pageInfo?: {
     hasNextPage?: boolean;
@@ -72,7 +72,21 @@ export const recordsFromPage = (page: RestPage | UnknownRecord[]) => {
     return page;
   }
 
-  return page.data ?? page.items ?? [];
+  if (Array.isArray(page.data)) {
+    return page.data;
+  }
+
+  if (page.data && typeof page.data === 'object') {
+    const collections = Object.values(page.data).filter(Array.isArray);
+
+    if (collections.length !== 1) {
+      throw new Error('A resposta REST do Twenty possui formato inesperado.');
+    }
+
+    return collections[0];
+  }
+
+  return page.items ?? [];
 };
 
 export const fetchEveryRecord = async (
@@ -88,7 +102,10 @@ export const fetchEveryRecord = async (
     const page = await client.get<RestPage | UnknownRecord[]>(path, {
       query: {
         limit: 100,
-        depth: 1,
+        // Depth zero keeps scalar foreign keys (for example clickUpListId,
+        // fromTaskId and toTaskId) without expanding relations outside the
+        // app's least-privilege role.
+        depth: 0,
         starting_after: cursor,
       },
     });

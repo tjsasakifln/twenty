@@ -43,6 +43,7 @@ CONTRACTUAL_MILESTONES_VIEW_ID = deterministic_uuid(
     "view", "global:contractual-milestones"
 )
 OPERATIONAL_CALENDAR_VIEW_ID = deterministic_uuid("view", "global:deadline-calendar")
+CUTOVER_STAGE_MEMORY_FIELD_UID = "38c98da3-3395-458a-a9f6-eafbda739e50"
 
 
 class CutoverError(RuntimeError):
@@ -134,6 +135,7 @@ class TwentyClient:
         else:
             self.write_count += 1
         return json.loads(raw) if raw else {}
+
 
     def list_rest(self, path: str, *, limit: int = 200) -> list[dict[str, Any]]:
         records: list[dict[str, Any]] = []
@@ -577,6 +579,39 @@ def build_configuration_plan(
     if missing_widget:
         raise CutoverError("FIELDS_WIDGET is missing fields: " + ", ".join(sorted(missing_widget)))
 
+    memory_fields = [
+        item
+        for item in task_meta.get("fields") or []
+        if item.get("universalIdentifier") == CUTOVER_STAGE_MEMORY_FIELD_UID
+    ]
+    if len(memory_fields) != 1:
+        raise CutoverError(
+            "expected exactly one app-owned cutover stage memory Task field"
+        )
+    memory_field_id = str(memory_fields[0]["id"])
+    memory_view_fields = [
+        item
+        for item in client.list_rest(
+            "/rest/metadata/viewFields?fieldMetadataId="
+            + urllib.parse.quote(memory_field_id),
+            limit=500,
+        )
+        if str(item.get("fieldMetadataId") or "") == memory_field_id
+    ]
+    if len(memory_view_fields) != 2:
+        raise CutoverError(
+            "expected exactly two view fields for the app-owned stage memory field"
+        )
+    for view_field in memory_view_fields:
+        if view_field.get("isVisible") is not False:
+            plan.widget_fields.append(
+                (
+                    str(view_field["id"]),
+                    original_fingerprint(view_field, ("isVisible",)),
+                    {"isVisible": False},
+                )
+            )
+
     stage_options = field_by_name["clickUpStatus"].get("options") or []
     stage_to_status, status_to_stage = choose_stage_options(
         stage_options, explicit_stage_map, requested_stage_labels
@@ -785,11 +820,13 @@ def transition_marker(
 def validated_base_url(value: Any) -> str:
     base_url = str(value or "").rstrip("/")
     parsed = urllib.parse.urlsplit(base_url)
-    if parsed.scheme != "https":
-        raise CutoverError("credentials base_url must use HTTPS")
-    if parsed.hostname != EXPECTED_TWENTY_HOSTNAME:
+    loopback = parsed.hostname in {"127.0.0.1", "localhost", "::1"}
+    canonical_https = (
+        parsed.scheme == "https" and parsed.hostname == EXPECTED_TWENTY_HOSTNAME
+    )
+    if not canonical_https and not (parsed.scheme == "http" and loopback):
         raise CutoverError(
-            f"credentials base_url hostname must be {EXPECTED_TWENTY_HOSTNAME}"
+            "credentials base_url must use the canonical HTTPS origin or explicit HTTP loopback"
         )
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise CutoverError("credentials base_url contains unsupported URL components")
@@ -797,7 +834,7 @@ def validated_base_url(value: Any) -> str:
         port = parsed.port
     except ValueError as exc:
         raise CutoverError("credentials base_url has an invalid port") from exc
-    if port not in (None, 443) or parsed.path not in ("", "/"):
+    if (canonical_https and port not in (None, 443)) or parsed.path not in ("", "/"):
         raise CutoverError("credentials base_url must be the canonical Twenty origin")
     return base_url
 
