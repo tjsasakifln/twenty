@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+set -euo pipefail
+set +x
+umask 077
+
+readonly APP_DIR="${APP_DIR:-/opt/confenge-gestao/apps/operational-timeline}"
+readonly CREDENTIAL_FILE="${CREDENTIAL_FILE:-/etc/confenge-gestao/admin.json}"
+readonly REMOTE_NAME="${REMOTE_NAME:-confenge-production}"
+readonly APPROVED_PLAN="${APPROVED_PLAN:?APPROVED_PLAN is required}"
+readonly APPROVED_PLAN_SHA256="${APPROVED_PLAN_SHA256:?APPROVED_PLAN_SHA256 is required}"
+readonly EXPECTED_WORKSPACE_ID="${CONFENGE_EXPECTED_WORKSPACE_ID:?CONFENGE_EXPECTED_WORKSPACE_ID is required}"
+readonly PUBLIC_URL="${TWENTY_PUBLIC_URL:?TWENTY_PUBLIC_URL is required}"
+
+test "$(id -u)" -eq 0 || { printf 'Run as root.\n' >&2; exit 1; }
+test -d "$APP_DIR" || { printf 'App directory not found.\n' >&2; exit 1; }
+test -r "$CREDENTIAL_FILE" || { printf 'Credential file is not readable.\n' >&2; exit 1; }
+test -r "$APPROVED_PLAN" || { printf 'Approved plan is not readable.\n' >&2; exit 1; }
+test "$PUBLIC_URL" = 'https://gestao.confenge.com.br' || {
+  printf 'Refusing unexpected public origin.\n' >&2
+  exit 1
+}
+printf '%s  %s\n' "$APPROVED_PLAN_SHA256" "$APPROVED_PLAN" | sha256sum -c - >/dev/null
+
+resolved_app_dir="$(realpath -e "$APP_DIR")"
+test "$resolved_app_dir" = '/opt/confenge-gestao/apps/operational-timeline' || {
+  printf 'Refusing unexpected app directory.\n' >&2
+  exit 1
+}
+python3 "$resolved_app_dir/scripts/test_deploy_origin_policy.py" >/dev/null
+
+private_env="$(mktemp)"
+cleanup() {
+  rm -f "$private_env"
+  unset TWENTY_DEPLOY_API_KEY TWENTY_REMOTE_URL CONFENGE_TIMELINE_READ_OBJECT_UNIVERSAL_IDENTIFIERS
+  rm -rf -- "$resolved_app_dir/node_modules" "$resolved_app_dir/.yarn" "$resolved_app_dir/.twenty"
+}
+trap cleanup EXIT
+
+python3 - "$CREDENTIAL_FILE" "$EXPECTED_WORKSPACE_ID" "$PUBLIC_URL" "$resolved_app_dir/scripts" >"$private_env" <<'PY'
+import json
+import shlex
+import sys
+import urllib.request
+
+credential_path, expected_workspace_id, public_url, scripts_dir = sys.argv[1:]
+sys.path.insert(0, scripts_dir)
+from deploy_origin_policy import validate_api_origin, validate_public_origin
+
+with open(credential_path, encoding="utf-8") as handle:
+    credential = json.load(handle)
+if credential.get("workspace_id") != expected_workspace_id:
+    raise SystemExit("Credential workspace mismatch")
+base_url = validate_api_origin(str(credential.get("base_url", "")))
+api_key = str(credential.get("api_key", ""))
+if not api_key:
+    raise SystemExit("Invalid production credential shape")
+public_url = validate_public_origin(public_url)
+
+request = urllib.request.Request(
+    base_url + "/rest/metadata/objects?limit=500",
+    headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json"},
+)
+with urllib.request.urlopen(request, timeout=60) as response:
+    payload = json.load(response)
+rows = payload if isinstance(payload, list) else (
+    payload.get("data") or payload.get("items") or payload.get("records") or []
+)
+by_name = {row.get("nameSingular"): row for row in rows if isinstance(row, dict)}
+universal_ids = []
+for name in ("clickUpDependency", "clickUpList"):
+    value = by_name.get(name, {}).get("universalIdentifier")
+    if not isinstance(value, str) or not value:
+        raise SystemExit(f"Missing object metadata: {name}")
+    universal_ids.append(value)
+
+print("TWENTY_REMOTE_URL=" + shlex.quote(public_url.rstrip("/")))
+print("TWENTY_DEPLOY_API_KEY=" + shlex.quote(api_key))
+print("CONFENGE_TIMELINE_READ_OBJECT_UNIVERSAL_IDENTIFIERS=" + shlex.quote(",".join(universal_ids)))
+PY
+
+# shellcheck disable=SC1090
+. "$private_env"
+export TWENTY_DEPLOY_API_KEY TWENTY_REMOTE_URL CONFENGE_TIMELINE_READ_OBJECT_UNIVERSAL_IDENTIFIERS
+
+install -d -m 0700 /root/.twenty
+sdk_image="$(docker inspect -f '{{.Config.Image}}' confenge-gestao-server-1)"
+run_sdk() {
+  docker run --rm --network host --user 0:0 \
+    -e HOME=/root \
+    -e TWENTY_DEPLOY_API_KEY \
+    -e TWENTY_REMOTE_URL \
+    -e CONFENGE_TIMELINE_READ_OBJECT_UNIVERSAL_IDENTIFIERS \
+    -v "$resolved_app_dir:/work" \
+    -v /root/.twenty:/root/.twenty \
+    -w /work \
+    --entrypoint sh \
+    "$sdk_image" -ec "$1"
+}
+
+run_sdk 'corepack enable && yarn install --immutable && yarn test && yarn typecheck && yarn build && yarn deploy:check'
+run_sdk 'corepack enable && yarn twenty remote:add --as '"$REMOTE_NAME"' --url "$TWENTY_REMOTE_URL" --api-key "$TWENTY_DEPLOY_API_KEY"'
+run_sdk 'corepack enable && yarn twenty --remote '"$REMOTE_NAME"' remote:status'
+run_sdk 'corepack enable && yarn twenty --remote '"$REMOTE_NAME"' apply . --no-delete'
+
+printf 'Approved application plan applied; CUTOVER_ENABLED remains at its manifest default.\n'
