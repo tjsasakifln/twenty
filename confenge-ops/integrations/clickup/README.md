@@ -34,6 +34,17 @@ and list links. Existing CRM objects and records are never deleted or replaced.
   Ongoing Twenty edits must be reconciled deliberately; replaying an old
   snapshot is not a sync. Production credentials remain on the target host.
 
+## Native cutover recovery
+
+The private encrypted production recovery set must include the cutover marker,
+the native configuration journal, stage map and application variables beside
+the existing administrator credential. The deployed daily backup includes
+`clickup-cutover.json`, `clickup-native-cutover-journal.json`,
+`clickup-native-stage-map.json` and `clickup-native-application-variables.json`
+from `/etc/confenge-gestao/` when present. Restore the marker with the database
+before permitting importer execution. Keep the original source export as a
+separate private archive; it is evidence for reconciliation, not a live sync.
+
 ## Snapshot inputs
 
 `hierarchy.json` accepts the current recursive shape:
