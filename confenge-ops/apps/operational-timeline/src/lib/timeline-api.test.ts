@@ -3,8 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   fetchEveryRecord,
   groupTimelineLinksByTask,
+  optionLabelsForField,
   parseTimelineDependency,
   recordsFromPage,
+  taskTitlesFromRecords,
   type RestPage,
 } from 'src/lib/timeline-api';
 
@@ -94,6 +96,39 @@ describe('Twenty REST pagination', () => {
     expect(() =>
       recordsFromPage({ data: { tasks: [], people: [] } }),
     ).toThrow('formato inesperado');
+  });
+});
+
+describe('UI metadata derived from authorized reads', () => {
+  it('maps current select values to labels without changing stored values', () => {
+    expect(
+      optionLabelsForField(
+        [
+          {
+            id: 'status-field',
+            name: 'clickUpStatus',
+            type: 'SELECT',
+            options: [
+              { value: 'S_INTERNAL', label: 'Em andamento' },
+              { value: 'DONE_INTERNAL', label: 'Concluído' },
+            ],
+          },
+        ],
+        'clickUpStatus',
+      ),
+    ).toEqual({ S_INTERNAL: 'Em andamento', DONE_INTERNAL: 'Concluído' });
+  });
+
+  it('keeps titles for relation targets outside the filtered task rows', () => {
+    expect(
+      taskTitlesFromRecords([
+        { id: 'visible', title: 'Marco visível' },
+        { id: 'outside', title: 'Tarefa relacionada externa' },
+      ]),
+    ).toEqual({
+      visible: 'Marco visível',
+      outside: 'Tarefa relacionada externa',
+    });
   });
 });
 

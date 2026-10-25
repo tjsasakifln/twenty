@@ -27,7 +27,7 @@ const themeColors = (theme: ReturnType<typeof useTheme>) => ({
   ink: theme.font.color.primary,
   muted: theme.font.color.secondary,
   faint: theme.font.color.tertiary,
-  inverted: theme.font.color.inverted,
+  onAccent: '#ffffff',
   border: theme.border.color.light,
   surface: theme.background.primary,
   canvas: theme.background.secondary,
@@ -72,7 +72,6 @@ const OperationalCalendar = () => {
   const today = useMemo(currentBrtDay, []);
   const [anchorDay, setAnchorDay] = useState(today);
   const [mode, setMode] = useState<'month' | 'week'>('month');
-  const [viewName, setViewName] = useState('');
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +85,6 @@ const OperationalCalendar = () => {
         viewVariableName: CALENDAR_VIEW_ID_VARIABLE,
         includeDependencies: false,
       });
-      setViewName(payload.viewName);
       setEvents(
         payload.tasks
           .map(toTimelineTask)
@@ -152,8 +150,8 @@ const OperationalCalendar = () => {
         <div>
           <h1 style={{ fontSize: 18, margin: 0 }}>Agenda operacional</h1>
           <div style={{ color: colors.muted, fontSize: 11, marginTop: 3 }}>
-            {viewName ? `Filtro nativo: ${viewName} · ` : ''}
-            {events.length} compromisso(s), sem duplicar prazo com hora
+            {events.length} compromisso(s) · Prazos de dia inteiro e
+            compromissos no horário de Brasília
           </div>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -172,7 +170,7 @@ const OperationalCalendar = () => {
             style={{
               ...buttonStyle,
               background: mode === 'month' ? colors.accent : colors.surface,
-              color: mode === 'month' ? colors.inverted : colors.ink,
+              color: mode === 'month' ? colors.onAccent : colors.ink,
             }}
             onClick={() => setMode('month')}
           >
@@ -184,7 +182,7 @@ const OperationalCalendar = () => {
             style={{
               ...buttonStyle,
               background: mode === 'week' ? colors.accent : colors.surface,
-              color: mode === 'week' ? colors.inverted : colors.ink,
+              color: mode === 'week' ? colors.onAccent : colors.ink,
             }}
             onClick={() => setMode('week')}
           >
@@ -406,9 +404,8 @@ const OperationalCalendar = () => {
           padding: '9px 16px',
         }}
       >
-        Roxo = dia inteiro · azul = horário de Brasília. Quando uma tarefa contém
-        as duas representações históricas, o compromisso com hora prevalece uma
-        única vez. Clique para editar na tarefa nativa.
+        Roxo = dia inteiro · azul = horário de Brasília. Clique em um compromisso
+        para abrir a tarefa e consultar ou ajustar o prazo.
       </footer>
     </main>
   );

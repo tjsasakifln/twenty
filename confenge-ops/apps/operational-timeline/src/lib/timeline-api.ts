@@ -29,6 +29,8 @@ export type TimelineDependency = {
 export type TimelinePayload = {
   tasks: UnknownRecord[];
   dependencies: TimelineDependency[];
+  statusLabels: Record<string, string>;
+  taskTitlesById: Record<string, string>;
   viewName: string;
 };
 
@@ -88,6 +90,46 @@ export const recordsFromPage = (page: RestPage | UnknownRecord[]) => {
 
   return page.items ?? [];
 };
+
+export const optionLabelsForField = (
+  fields: FieldMetadataLike[],
+  fieldName: string,
+) => {
+  const options = fields.find((field) => field.name === fieldName)?.options;
+
+  if (!Array.isArray(options)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    options.flatMap((option) => {
+      if (!option || typeof option !== 'object') {
+        return [];
+      }
+
+      const { value, label } = option as UnknownRecord;
+
+      return typeof value === 'string' && typeof label === 'string'
+        ? [[value, label]]
+        : [];
+    }),
+  );
+};
+
+export const taskTitlesFromRecords = (records: UnknownRecord[]) =>
+  Object.fromEntries(
+    records.flatMap((record) => {
+      const id = typeof record.id === 'string' ? record.id : null;
+      const title =
+        typeof record.title === 'string'
+          ? record.title
+          : typeof record.name === 'string'
+            ? record.name
+            : null;
+
+      return id && title ? [[id, title]] : [];
+    }),
+  );
 
 export const fetchEveryRecord = async (
   client: RestApiClient,
@@ -230,7 +272,9 @@ export const loadTimelinePayload = async ({
           nameSingular: true,
           fields: {
             __args: { paging: { first: 500 }, filter: {} },
-            edges: { node: { id: true, name: true, type: true } },
+            edges: {
+              node: { id: true, name: true, type: true, options: true },
+            },
           },
         },
       },
@@ -268,6 +312,8 @@ export const loadTimelinePayload = async ({
   return {
     tasks,
     dependencies: dependencyRecords.map(parseTimelineDependency),
+    statusLabels: optionLabelsForField(fields, 'clickUpStatus'),
+    taskTitlesById: taskTitlesFromRecords(allTasks),
     viewName: getView.name,
   };
 };

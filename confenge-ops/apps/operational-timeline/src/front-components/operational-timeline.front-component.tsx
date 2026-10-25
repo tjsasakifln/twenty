@@ -124,8 +124,8 @@ const OperationalTimeline = () => {
   );
   const range = useMemo(() => buildTimelineRange(visibleTasks), [visibleTasks]);
   const titleById = useMemo(
-    () => new Map(tasks.map((task) => [task.id, task.title])),
-    [tasks],
+    () => new Map(Object.entries(payload?.taskTitlesById ?? {})),
+    [payload],
   );
   const parentById = useMemo(
     () => new Map(tasks.map((task) => [task.id, task.parentId])),
@@ -212,8 +212,7 @@ const OperationalTimeline = () => {
         <div>
           <h1 style={{ fontSize: 18, margin: 0 }}>{APP_DISPLAY_NAME}</h1>
           <div style={{ color: palette.muted, fontSize: 12, marginTop: 3 }}>
-            Filtro nativo: {payload?.viewName} · {visibleTasks.length} de{' '}
-            {tasks.length} tarefas
+            Marcos contratuais · {visibleTasks.length} de {tasks.length} tarefas
           </div>
         </div>
         <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -228,7 +227,7 @@ const OperationalTimeline = () => {
               <option value="">Todos</option>
               {statuses.map((status) => (
                 <option key={status} value={status}>
-                  {status}
+                  {payload?.statusLabels[status] ?? status}
                 </option>
               ))}
             </select>
@@ -408,7 +407,9 @@ const OperationalTimeline = () => {
                         ? 'Prazo anterior ao início — corrija na tarefa'
                         : parentTitle
                           ? `Subtarefa de ${parentTitle}`
-                          : task.status ?? 'Sem status'}
+                          : task.status
+                            ? (payload?.statusLabels[task.status] ?? task.status)
+                            : 'Sem status'}
                       {links.dependsOn.length > 0
                         ? ` · depende de ${links.dependsOn.length}`
                         : ''}

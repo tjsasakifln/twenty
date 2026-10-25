@@ -22,6 +22,7 @@ export type FieldMetadataLike = {
   id: string;
   name: string;
   type?: string;
+  options?: unknown;
 };
 
 export type TimelineDate = {
