@@ -2954,6 +2954,20 @@ def emit_report(report: dict[str, Any], path: Path | None) -> None:
         temporary.replace(path)
 
 
+def assert_import_not_cut_over(credential_file: Path, target_workspace_id: str) -> None:
+    # Once Twenty owns ongoing edits, an old source snapshot must not win again.
+    marker = credential_file.resolve().parent / "clickup-cutover.json"
+    if not marker.exists():
+        return
+    state = load_json(marker)
+    if not isinstance(state, dict) or state.get("target_workspace_id") != target_workspace_id:
+        raise ContractError("cutover marker is invalid or belongs to another target; import refused")
+    raise ContractError(
+        "ClickUp reimport is locked by clickup-cutover.json: Twenty owns ongoing edits. "
+        "Reconcile later source changes separately instead of replaying the snapshot."
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
@@ -2992,6 +3006,7 @@ def main(argv: list[str] | None = None) -> int:
             raise ContractError("apply requires --credential-file")
         if not args.confirm_target_workspace_id:
             raise ContractError("apply requires --confirm-target-workspace-id")
+        assert_import_not_cut_over(args.credential_file, args.confirm_target_workspace_id)
         if args.signup_guard_report is None:
             raise ContractError("apply requires --signup-guard-report")
         signup_guard = load_json(args.signup_guard_report)

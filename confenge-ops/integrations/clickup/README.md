@@ -25,6 +25,9 @@ and list links. Existing CRM objects and records are never deleted or replaced.
   importer never deletes user-created views, filters, navigation entries, or
   records.
 - Raw snapshots and credentials remain outside this directory and public Git.
+- After cutover, a target-bound `clickup-cutover.json` beside the credential file
+  blocks production reimports before any network request. Ongoing Twenty edits
+  must be reconciled deliberately; replaying an old snapshot is not a sync.
 
 ## Snapshot inputs
 

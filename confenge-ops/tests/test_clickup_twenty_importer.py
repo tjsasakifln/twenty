@@ -698,5 +698,42 @@ class ReconciliationTests(unittest.TestCase):
         self.assertEqual(next(item for item in client.fields if item["id"] == "vf-ungrouped")["position"], 9)
 
 
+class CutoverLockTests(unittest.TestCase):
+    def test_import_before_cutover_is_allowed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            importer.assert_import_not_cut_over(Path(directory) / "admin.json", "target-test")
+
+    def test_cutover_blocks_reimport_before_client_creation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "hierarchy.json").write_text(json.dumps(hierarchy_fixture()), encoding="utf-8")
+            (root / "tasks.json").write_text(json.dumps(tasks_fixture()), encoding="utf-8")
+            (root / "clickup-cutover.json").write_text(
+                json.dumps({"target_workspace_id": "target-test", "system_of_record": "twenty"}),
+                encoding="utf-8",
+            )
+            with patch.object(importer, "TwentyClient") as client, patch("sys.stderr", new_callable=io.StringIO) as errors:
+                result = importer.main([
+                    "--hierarchy", str(root / "hierarchy.json"),
+                    "--tasks", str(root / "tasks.json"), "--apply",
+                    "--ack-production-write", importer.APPLY_ACK,
+                    "--confirm-workspace-id", "workspace-1",
+                    "--confirm-target-workspace-id", "target-test",
+                    "--credential-file", str(root / "admin.json"),
+                ])
+            self.assertEqual(result, 2)
+            self.assertIn("reimport is locked", errors.getvalue())
+            client.assert_not_called()
+
+    def test_malformed_or_wrong_target_marker_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for state in ({}, {"target_workspace_id": "other-target"}, []):
+                with self.subTest(state=state):
+                    (root / "clickup-cutover.json").write_text(json.dumps(state), encoding="utf-8")
+                    with self.assertRaises(importer.ContractError):
+                        importer.assert_import_not_cut_over(root / "admin.json", "target-test")
+
+
 if __name__ == "__main__":
     unittest.main()
