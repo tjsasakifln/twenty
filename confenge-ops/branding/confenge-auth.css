@@ -1,0 +1,25 @@
+/*
+ * The source markup is Twenty 2.45's auth Logo component.  It has no stable
+ * class names, but the fallback Android icon URL and /welcome link are stable
+ * product contracts.  This selector is deliberately limited to that exact
+ * mark; it cannot affect arbitrary workspace avatars or application logos.
+ */
+div:has(> a[href="/welcome"] > div[style*="/images/icons/android/android-launchericon-192-192.png"]) {
+  height: 62px !important;
+  margin-bottom: 16px !important;
+  margin-top: 16px !important;
+  width: 240px !important;
+}
+
+div:has(> a[href="/welcome"] > div[style*="/images/icons/android/android-launchericon-192-192.png"]) > a[href="/welcome"] > div[style*="/images/icons/android/android-launchericon-192-192.png"] {
+  background-image: url("/branding/confenge-logo-white.png") !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: contain !important;
+  height: 62px !important;
+  width: 240px !important;
+}
+
+div:has(> a[href="/welcome"] > div[style*="/images/icons/android/android-launchericon-192-192.png"]) > div:not(:has(> a[href="/welcome"])) {
+  display: none !important;
+}
