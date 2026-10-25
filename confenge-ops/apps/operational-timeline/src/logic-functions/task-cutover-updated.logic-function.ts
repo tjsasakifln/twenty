@@ -31,11 +31,11 @@ export const handleTaskUpdated = async (
   const task = event.properties.after;
 
   if (!isTaskSnapshot(task)) {
-    throw new Error('O evento tasks.updated não contém uma tarefa válida.');
+    throw new Error('O evento task.updated não contém uma tarefa válida.');
   }
 
   const runtime = loadCutoverRuntime();
-  return reconcileUpdatedEvent(
+  const result = await reconcileUpdatedEvent(
     task,
     event.properties.updatedFields,
     runtime,
@@ -43,6 +43,8 @@ export const handleTaskUpdated = async (
     undefined,
     event.properties.before,
   );
+
+  return result;
 };
 
 export default defineLogicFunction({
@@ -52,7 +54,7 @@ export default defineLogicFunction({
     'Mantém Etapa, situação geral e semântica de datas coerentes após edições nativas.',
   timeoutSeconds: 10,
   databaseEventTriggerSettings: {
-    eventName: 'tasks.updated',
+    eventName: 'task.updated',
     updatedFields: [...WATCHED_TASK_FIELDS],
   },
   handler: handleTaskUpdated,

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "confenge.codex-routine-catalog.v1",
+  "timezone": "America/Sao_Paulo",
+  "routines": [
+    {
+      "automationId": "example-knowledge-routine",
+      "name": "Example | Knowledge upkeep",
+      "kind": "heartbeat",
+      "schedule": "RRULE:FREQ=DAILY;BYHOUR=21;BYMINUTE=0;BYSECOND=0",
+      "schedulerStatus": "ACTIVE",
+      "allowedDomainObjects": ["task"],
+      "allowExtraSync": false
+    },
+    {
+      "automationId": "example-status-routine",
+      "name": "Example | Status upkeep",
+      "kind": "heartbeat",
+      "schedule": "RRULE:FREQ=WEEKLY;BYDAY=MO;BYHOUR=8;BYMINUTE=0;BYSECOND=0",
+      "schedulerStatus": "ACTIVE",
+      "allowedDomainObjects": ["task"],
+      "allowExtraSync": false
+    }
+  ]
+}

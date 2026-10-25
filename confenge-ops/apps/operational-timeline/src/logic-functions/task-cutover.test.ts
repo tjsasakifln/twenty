@@ -2,16 +2,23 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   CUTOVER_VARIABLES,
+  cutoverApiBaseUrl,
   loadCutoverRuntime,
   planCreatedTask,
   planUpdatedTask,
+  readTask,
   reconcileCreatedEvent,
   reconcileUpdatedEvent,
   type CutoverRuntime,
   type TaskSnapshot,
 } from 'src/logic-functions/task-cutover';
-import { handleTaskCreated } from 'src/logic-functions/task-cutover-created.logic-function';
-import { handleTaskUpdated } from 'src/logic-functions/task-cutover-updated.logic-function';
+import taskCutoverCreated, {
+  handleTaskCreated,
+} from 'src/logic-functions/task-cutover-created.logic-function';
+import taskCutoverUpdated, {
+  handleTaskUpdated,
+  WATCHED_TASK_FIELDS,
+} from 'src/logic-functions/task-cutover-updated.logic-function';
 
 const runtime: CutoverRuntime = {
   memberId: 'member-1',
@@ -43,6 +50,21 @@ const task = (overrides: Partial<TaskSnapshot> = {}): TaskSnapshot => ({
   clickUpDueOn: null,
   dueAt: null,
   ...overrides,
+});
+
+describe('task cutover trigger manifest contract', () => {
+  it('subscribes the create handler to the singular Twenty object event', () => {
+    expect(taskCutoverCreated.config.databaseEventTriggerSettings).toEqual({
+      eventName: 'task.created',
+    });
+  });
+
+  it('subscribes the update handler to the singular event and every watched field', () => {
+    expect(taskCutoverUpdated.config.databaseEventTriggerSettings).toEqual({
+      eventName: 'task.updated',
+      updatedFields: [...WATCHED_TASK_FIELDS],
+    });
+  });
 });
 
 describe('task cutover event planning', () => {
@@ -331,6 +353,70 @@ describe('task cutover event planning', () => {
     ).toEqual({ kind: 'noop', patch: {} });
   });
 
+  it('preserves a detailed stage on the status echo emitted by a stage edit', () => {
+    expect(
+      planUpdatedTask(
+        task({ status: 'IN_PROGRESS', clickUpStatus: 'reviewing' }),
+        ['status'],
+        runtime,
+        task({ status: 'TODO', clickUpStatus: 'reviewing' }),
+      ),
+    ).toEqual({ kind: 'noop', patch: {} });
+
+    expect(
+      planUpdatedTask(
+        task({
+          status: 'DONE',
+          clickUpStatus: 'concluded',
+          cutoverStageBeforeDone: 'reviewing',
+        }),
+        ['status'],
+        runtime,
+        task({
+          status: 'IN_PROGRESS',
+          clickUpStatus: 'concluded',
+          cutoverStageBeforeDone: 'reviewing',
+        }),
+      ),
+    ).toEqual({ kind: 'noop', patch: {} });
+  });
+
+  it('clears stale completion memory on a coherent non-DONE status echo', () => {
+    expect(
+      planUpdatedTask(
+        task({
+          status: 'IN_PROGRESS',
+          clickUpStatus: 'reviewing',
+          cutoverStageBeforeDone: 'reviewing',
+        }),
+        ['status'],
+        runtime,
+      ),
+    ).toEqual({
+      kind: 'patch',
+      patch: { cutoverStageBeforeDone: null },
+    });
+  });
+
+  it('accepts the coherent combined echo emitted by an exact reopen patch', () => {
+    expect(
+      planUpdatedTask(
+        task({
+          status: 'IN_PROGRESS',
+          clickUpStatus: 'reviewing',
+          cutoverStageBeforeDone: null,
+        }),
+        ['status', 'clickUpStatus'],
+        runtime,
+        task({
+          status: 'TODO',
+          clickUpStatus: 'concluded',
+          cutoverStageBeforeDone: 'reviewing',
+        }),
+      ),
+    ).toEqual({ kind: 'noop', patch: {} });
+  });
+
   it('reports simultaneous incompatible status edits without overwriting either', () => {
     const plan = planUpdatedTask(
       task({ status: 'DONE', clickUpStatus: 'reviewing' }),
@@ -401,6 +487,45 @@ describe('task cutover runtime', () => {
     process.env[CUTOVER_VARIABLES.doneStage] = 'concluded';
 
     expect(loadCutoverRuntime()).toEqual(runtime);
+  });
+
+  it('pins API calls to the authorized internal Twenty endpoint', () => {
+    process.env[CUTOVER_VARIABLES.apiBaseUrl] = 'http://server:3000/';
+
+    expect(cutoverApiBaseUrl()).toBe('http://server:3000');
+  });
+
+  it.each([
+    'https://gestao.confenge.com.br',
+    'http://server:3001',
+    'http://db:5432',
+    'http://server:3000/graphql',
+    'http://user:password@server:3000',
+    'http://server:3000?redirect=http://db:5432',
+  ])('rejects an API endpoint outside the strict allowlist: %s', (value) => {
+    process.env[CUTOVER_VARIABLES.apiBaseUrl] = value;
+
+    expect(() => cutoverApiBaseUrl()).toThrow(
+      'deve apontar exatamente para o endpoint interno autorizado',
+    );
+  });
+
+  it('pins CAS rereads to depth zero so limited roles do not expand relations', async () => {
+    const calls: unknown[][] = [];
+    const snapshot = task();
+    const client = {
+      get: async (...args: unknown[]) => {
+        calls.push(args);
+        return snapshot;
+      },
+    };
+
+    await expect(readTask(snapshot.id, client as never)).resolves.toEqual(
+      snapshot,
+    );
+    expect(calls).toEqual([
+      [`/rest/tasks/${snapshot.id}`, { query: { depth: 0 } }],
+    ]);
   });
 
   it('fails closed before reading variables or calling APIs when disabled', async () => {

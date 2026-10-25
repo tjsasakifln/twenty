@@ -339,6 +339,7 @@ class ConfigurationPlanTests(unittest.TestCase):
         self.assertEqual(
             set(plan.application_variables),
             {
+                "CUTOVER_API_BASE_URL",
                 "CUTOVER_MEMBER_ID",
                 "CUTOVER_DEFAULT_LIST_ID",
                 "CUTOVER_STAGE_STATUS_MAP",
@@ -348,6 +349,10 @@ class ConfigurationPlanTests(unittest.TestCase):
                 "CONTRACTUAL_MILESTONES_VIEW_ID",
                 "OPERATIONAL_CALENDAR_VIEW_ID",
             },
+        )
+        self.assertEqual(
+            plan.application_variables["CUTOVER_API_BASE_URL"],
+            cutover.CUTOVER_API_BASE_URL,
         )
         self.assertEqual(
             plan.application_variables["CONTRACTUAL_MILESTONES_VIEW_ID"],

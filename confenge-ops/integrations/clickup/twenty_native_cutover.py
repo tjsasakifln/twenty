@@ -44,6 +44,7 @@ CONTRACTUAL_MILESTONES_VIEW_ID = deterministic_uuid(
 )
 OPERATIONAL_CALENDAR_VIEW_ID = deterministic_uuid("view", "global:deadline-calendar")
 CUTOVER_STAGE_MEMORY_FIELD_UID = "38c98da3-3395-458a-a9f6-eafbda739e50"
+CUTOVER_API_BASE_URL = "http://server:3000"
 
 
 class CutoverError(RuntimeError):
@@ -617,6 +618,7 @@ def build_configuration_plan(
         stage_options, explicit_stage_map, requested_stage_labels
     )
     plan.application_variables = {
+        "CUTOVER_API_BASE_URL": CUTOVER_API_BASE_URL,
         "CUTOVER_MEMBER_ID": member_id,
         "CUTOVER_DEFAULT_LIST_ID": default_list_id,
         "CUTOVER_STAGE_STATUS_MAP": json.dumps(stage_to_status, separators=(",", ":"), sort_keys=True),

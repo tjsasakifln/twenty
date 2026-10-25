@@ -14,6 +14,7 @@ from deploy_origin_policy import validate_api_origin
 EXPECTED_KEYS = {
     "CONTRACTUAL_MILESTONES_VIEW_ID",
     "OPERATIONAL_CALENDAR_VIEW_ID",
+    "CUTOVER_API_BASE_URL",
     "CUTOVER_MEMBER_ID",
     "CUTOVER_DEFAULT_LIST_ID",
     "CUTOVER_STAGE_STATUS_MAP",
@@ -57,7 +58,7 @@ mutation UpdatePrivateApplicationVariable(
 
 def normalize_values(payload: object) -> dict[str, str]:
     if not isinstance(payload, dict) or set(payload) != EXPECTED_KEYS:
-        raise ValueError("Variable file must contain exactly the approved eight keys")
+        raise ValueError("Variable file must contain exactly the approved nine keys")
     normalized: dict[str, str] = {}
     for key in sorted(EXPECTED_KEYS):
         value = payload[key]
@@ -75,6 +76,12 @@ def normalize_values(payload: object) -> dict[str, str]:
                 )
             else:
                 raise ValueError("CUTOVER_STAGE_STATUS_MAP must be an object or JSON string")
+        if key == "CUTOVER_API_BASE_URL":
+            if value not in ("http://server:3000", "http://server:3000/"):
+                raise ValueError(
+                    "CUTOVER_API_BASE_URL must be the allowlisted internal origin"
+                )
+            value = "http://server:3000"
         if not isinstance(value, str) or not value.strip():
             raise ValueError(f"{key} must be a non-empty string")
         normalized[key] = value

@@ -12,6 +12,7 @@ EXPECTED_VARIABLE_KEYS = {
     "CONTRACTUAL_MILESTONES_VIEW_ID",
     "OPERATIONAL_CALENDAR_VIEW_ID",
     "CUTOVER_ENABLED",
+    "CUTOVER_API_BASE_URL",
     "CUTOVER_MEMBER_ID",
     "CUTOVER_DEFAULT_LIST_ID",
     "CUTOVER_STAGE_STATUS_MAP",
@@ -92,6 +93,8 @@ def main() -> None:
         raise SystemExit("Installed application variable schema mismatch")
     if variables_by_key.get("CUTOVER_ENABLED") != "false":
         raise SystemExit("CUTOVER_ENABLED is not false")
+    if variables_by_key.get("CUTOVER_API_BASE_URL") != "http://server:3000":
+        raise SystemExit("CUTOVER_API_BASE_URL is not the allowlisted internal origin")
 
     expected_page_uids = set(args.page_layout_uid)
     layouts = [

@@ -19,7 +19,15 @@ atomic local snapshot before the separate Twenty synchronization stage.
   calculation and public access probe.
 - `integrations/clickup/`: an offline-first native Twenty importer for private
   ClickUp snapshots, including typed fields, task relationships, views and
-  navigation. See its README for input contracts and guarded production use.
+  navigation, plus a recoverable native-workflow configurator and disposable
+  production smoke check. See its README for guarded production use.
+- `apps/operational-timeline/`: native agenda and timeline pages, and gated
+  task-event rules for stages, completion, dates and new-task defaults.
+- `integrations/operational-overview/`: additive operational dashboard widgets
+  and goals linked to tasks; preserves existing dashboards and business records.
+- `integrations/codex-routines/`: scheduled-run registry, confirmed result delivery
+  and durable outboxes. The actual routine catalog remains private. Codex keeps
+  ownership of scheduling; local routines require the desktop app and computer.
 - `scripts/infra/`: initialization, deployment, health, and transactional
   public-origin deployment helpers.
 - `tests/`: offline unit tests. They use fixtures and fake transports only.
@@ -38,7 +46,9 @@ python -m unittest discover -s tests -p 'test_*.py'
 bash scripts/infra/test-deploy-public-origin-mocks.sh
 ```
 
-The unit-test command includes the ClickUp importer's offline contract suite.
+The unit-test command includes the import, native configuration, overview and
+routine-delivery contract suites. The native application's README documents its
+separate TypeScript tests, build, metadata planning and rollout procedure.
 
 The dedicated Nginx root location requests an HTML document from Twenty even
 when a client sends `Accept: */*`. API and asset routes retain their existing

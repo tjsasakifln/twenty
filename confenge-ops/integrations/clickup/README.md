@@ -49,6 +49,38 @@ lockfile, excluding installed dependencies, SDK output and build caches. The
 application's installed metadata and storage remain in the database and storage
 recovery set. Keep the task-event gate off until post-restore validation passes.
 
+## Native cutover operation
+
+The Twenty server keeps `LOGIC_FUNCTION_TYPE=DISABLED`; only the worker uses
+`LOGIC_FUNCTION_TYPE=LOCAL`. `CODE_INTERPRETER_TYPE` remains `DISABLED` on both
+services. The LOCAL driver executes only reviewed application code. It is not a
+strong isolation boundary: the child process inherits the worker environment,
+internal network and application-storage mount. Do not enable unreviewed or
+third-party functions on this worker.
+
+Keep `CUTOVER_ENABLED=false` while applying an application bundle or recreating
+the worker. Recreate only the worker; the API, PostgreSQL and Redis do not need a
+restart for this setting. Before enabling, run `set_native_cutover_gate.py` with
+the target marker and the root-only runtime allowlist. Its fail-closed preflight
+checks the exact function inventory and triggers, current builds/checksums,
+queued function references, server/worker drivers and disabled code interpreter.
+It must be possible to set the gate to `false` even if those runtime checks no
+longer pass, so the same helper remains the kill switch.
+
+After every bundle or worker replacement, keep the gate off until the installed
+application and variables are verified. Then enable through the guard and run a
+tagged disposable QA smoke test. The smoke test must journal IDs before writes,
+exercise stage/status round trips, date semantics, assignment, list, subtask and
+dependency relations, and remove only its own records. Preserve and reconcile
+any concurrent non-QA activity instead of deleting or rewriting it.
+
+Rollback from LOCAL is potentially lossy. First set the gate to `false`, stop
+the worker, and capture pending logic-function queue references for explicit
+reconciliation. Only then restore `LOGIC_FUNCTION_TYPE=DISABLED` and recreate
+the worker. A running Disabled driver may discard queued function work, so never
+use that transition as a queue purge and never claim recovery without checking
+the affected records.
+
 ## Snapshot inputs
 
 `hierarchy.json` accepts the current recursive shape:

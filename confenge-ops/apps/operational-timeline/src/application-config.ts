@@ -11,6 +11,9 @@ import {
   VIEW_ID_VARIABLE_UNIVERSAL_IDENTIFIER,
 } from 'src/constants/universal-identifiers';
 
+const CUTOVER_API_BASE_URL_VARIABLE_UNIVERSAL_IDENTIFIER =
+  '8fe34c00-2e68-47bf-ba10-407507bfcd63';
+
 export default defineApplication({
   universalIdentifier: APPLICATION_UNIVERSAL_IDENTIFIER,
   displayName: APP_DISPLAY_NAME,
@@ -40,6 +43,14 @@ export default defineApplication({
         'Mantenha desligado durante instalação e configuração; ative somente depois da validação.',
       type: FieldType.BOOLEAN,
       value: false,
+    },
+    CUTOVER_API_BASE_URL: {
+      universalIdentifier: CUTOVER_API_BASE_URL_VARIABLE_UNIVERSAL_IDENTIFIER,
+      label: 'Endpoint interno das automações',
+      description:
+        'Origem interna allowlisted usada somente pelo runtime das automações no worker.',
+      type: FieldType.TEXT,
+      isRequired: true,
     },
     CUTOVER_MEMBER_ID: {
       universalIdentifier:

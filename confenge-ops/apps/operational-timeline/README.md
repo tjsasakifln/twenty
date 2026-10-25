@@ -11,7 +11,7 @@ ClickUp sem criar outro portal ou outro login.
 - **Agenda operacional:** grade mensal e lista semanal combinando
   `clickUpDueOn` (dia inteiro) com `dueAt` (horário em Brasília). Se um registro
   histórico tiver os dois campos, `dueAt` prevalece e a tarefa aparece uma vez.
-- **Cutover nativo:** eventos `tasks.created` e `tasks.updated` aplicam defaults
+- **Cutover nativo:** eventos `task.created` e `task.updated` aplicam defaults
   e conciliam Etapa/status e as duas representações de data com compare-and-swap.
 
 Os dois componentes leem os filtros das visões por ID em tempo de execução. O
@@ -48,6 +48,7 @@ workspace:
 | `CONTRACTUAL_MILESTONES_VIEW_ID` | TEXT | front component autenticado | filtro do cronograma |
 | `OPERATIONAL_CALENDAR_VIEW_ID` | TEXT | front component autenticado | filtro da agenda |
 | `CUTOVER_ENABLED` | BOOLEAN | configuração | gate; padrão `false` |
+| `CUTOVER_API_BASE_URL` | TEXT | configuração | origem interna allowlisted usada somente pelas funções no worker |
 | `CUTOVER_MEMBER_ID` | TEXT | secret | responsável padrão |
 | `CUTOVER_DEFAULT_LIST_ID` | TEXT | secret | lista padrão |
 | `CUTOVER_STAGE_STATUS_MAP` | RAW_JSON | secret | mapa Etapa → `TODO`/`IN_PROGRESS`/`DONE` |
@@ -100,7 +101,7 @@ yarn twenty --remote confenge-production apply . --no-delete
 
 Não executar `apply` se o plano remover entidades, ampliar a role ou se
 `CONFENGE_TIMELINE_READ_OBJECT_UNIVERSAL_IDENTIFIERS` estiver vazio. Depois do
-`apply`, manter `CUTOVER_ENABLED=false`, preencher e validar as outras oito
+`apply`, manter `CUTOVER_ENABLED=false`, preencher e validar as outras nove
 variáveis, abrir Cronograma/Agenda com um usuário real e só então mudar
 `CUTOVER_ENABLED=true`. Mesmo com os triggers registrados na fase inicial, o
 gate retorna sem carregar variáveis nem escrever tarefas.

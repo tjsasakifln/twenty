@@ -1,6 +1,7 @@
 import { RestApiClient } from 'twenty-client-sdk/rest';
 
 export const CUTOVER_VARIABLES = {
+  apiBaseUrl: 'CUTOVER_API_BASE_URL',
   memberId: 'CUTOVER_MEMBER_ID',
   defaultListId: 'CUTOVER_DEFAULT_LIST_ID',
   stageStatusMap: 'CUTOVER_STAGE_STATUS_MAP',
@@ -8,6 +9,8 @@ export const CUTOVER_VARIABLES = {
   inProgressStage: 'CUTOVER_STAGE_IN_PROGRESS',
   doneStage: 'CUTOVER_STAGE_DONE',
 } as const;
+
+const ALLOWED_CUTOVER_API_BASE_URL = 'http://server:3000';
 
 export const isCutoverEnabled = () => process.env.CUTOVER_ENABLED === 'true';
 
@@ -69,6 +72,43 @@ const requiredEnvironmentVariable = (name: string): string => {
 
   return value;
 };
+
+export const cutoverApiBaseUrl = (): string => {
+  const value = requiredEnvironmentVariable(CUTOVER_VARIABLES.apiBaseUrl);
+
+  let parsed: URL;
+
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(
+      `${CUTOVER_VARIABLES.apiBaseUrl} precisa conter uma URL interna válida.`,
+    );
+  }
+
+  const normalized = `${parsed.protocol}//${parsed.host}${
+    parsed.pathname === '/' ? '' : parsed.pathname
+  }`;
+  const hasUnexpectedParts =
+    parsed.username !== '' ||
+    parsed.password !== '' ||
+    parsed.search !== '' ||
+    parsed.hash !== '';
+
+  if (hasUnexpectedParts || normalized !== ALLOWED_CUTOVER_API_BASE_URL) {
+    throw new Error(
+      `${CUTOVER_VARIABLES.apiBaseUrl} deve apontar exatamente para o endpoint interno autorizado.`,
+    );
+  }
+
+  return ALLOWED_CUTOVER_API_BASE_URL;
+};
+
+const cutoverRestClient = () =>
+  new RestApiClient({
+    runAs: 'application',
+    baseUrl: cutoverApiBaseUrl(),
+  });
 
 export const loadCutoverRuntime = (): CutoverRuntime => {
   const rawMap = requiredEnvironmentVariable(CUTOVER_VARIABLES.stageStatusMap);
@@ -259,7 +299,14 @@ export const planUpdatedTask = (
         patch.cutoverStageBeforeDone = null;
       }
     } else if (statusChanged) {
-      if (status === 'DONE') {
+      if (stage && runtime.stageToStatus[stage] === status) {
+        // A stage-first edit emits a second event for the status patched by
+        // this function.  The already-coherent detailed stage is not a new
+        // native-button intent and must survive that echo event.
+        if (status !== 'DONE' && task.cutoverStageBeforeDone) {
+          patch.cutoverStageBeforeDone = null;
+        }
+      } else if (status === 'DONE') {
         patch.clickUpStatus = runtime.statusToStage.DONE;
         if (stage && runtime.stageToStatus[stage] !== 'DONE') {
           patch.cutoverStageBeforeDone = stage;
@@ -349,7 +396,7 @@ export const updateTaskWithCompareAndSwap = async (
     return { applied: false, conflict: false };
   }
 
-  const client = new RestApiClient({ runAs: 'application' });
+  const client = cutoverRestClient();
   const response = await client.post<GraphQlResponse>('/graphql', {
     query: UPDATE_TASKS_WITH_CAS,
     variables: {
@@ -422,11 +469,13 @@ const taskFromResponse = (response: unknown): TaskSnapshot => {
   return value;
 };
 
-export const readTask = async (taskId: string): Promise<TaskSnapshot> => {
-  const client = new RestApiClient({ runAs: 'application' });
-
-  return taskFromResponse(await client.get(`/rest/tasks/${taskId}`));
-};
+export const readTask = async (
+  taskId: string,
+  client: Pick<RestApiClient, 'get'> = cutoverRestClient(),
+): Promise<TaskSnapshot> =>
+  taskFromResponse(
+    await client.get(`/rest/tasks/${taskId}`, { query: { depth: 0 } }),
+  );
 
 export const reconcileCreatedEvent = async (
   initialTask: TaskSnapshot,

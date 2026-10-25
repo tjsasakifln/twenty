@@ -23,10 +23,12 @@ export const handleTaskCreated = async (
   const task = event.properties.after;
 
   if (!isTaskSnapshot(task)) {
-    throw new Error('O evento tasks.created não contém uma tarefa válida.');
+    throw new Error('O evento task.created não contém uma tarefa válida.');
   }
 
-  return reconcileCreatedEvent(task, loadCutoverRuntime());
+  const result = await reconcileCreatedEvent(task, loadCutoverRuntime());
+
+  return result;
 };
 
 export default defineLogicFunction({
@@ -36,7 +38,7 @@ export default defineLogicFunction({
     'Aplica responsável, lista, etapa e datas padrão somente na criação nativa da tarefa.',
   timeoutSeconds: 10,
   databaseEventTriggerSettings: {
-    eventName: 'tasks.created',
+    eventName: 'task.created',
   },
   handler: handleTaskCreated,
 });
