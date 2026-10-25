@@ -17,6 +17,9 @@ atomic local snapshot before the separate Twenty synchronization stage.
   records or tenant identifiers.
 - `integrations/`: read-only Google Sheets reader and integrity probe, freshness
   calculation and public access probe.
+- `integrations/clickup/`: an offline-first native Twenty importer for private
+  ClickUp snapshots, including typed fields, task relationships, views and
+  navigation. See its README for input contracts and guarded production use.
 - `scripts/infra/`: initialization, deployment, health, and transactional
   public-origin deployment helpers.
 - `tests/`: offline unit tests. They use fixtures and fake transports only.
@@ -34,6 +37,12 @@ Run the offline checks from this directory:
 python -m unittest discover -s tests -p 'test_*.py'
 bash scripts/infra/test-deploy-public-origin-mocks.sh
 ```
+
+The unit-test command includes the ClickUp importer's offline contract suite.
+
+The dedicated Nginx root location requests an HTML document from Twenty even
+when a client sends `Accept: */*`. API and asset routes retain their existing
+content negotiation.
 
 The complete operational dossier, evidence, backup material, and business data
 remain in the private delivery package and production recovery store.

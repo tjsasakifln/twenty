@@ -1,0 +1,11 @@
+# Runtime inputs are private and must never be committed.
+*.json
+*.jsonl
+*.ndjson
+*.log
+*.report
+credentials/
+snapshots/
+state/
+__pycache__/
+*.pyc
