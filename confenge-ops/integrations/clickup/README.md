@@ -25,9 +25,14 @@ and list links. Existing CRM objects and records are never deleted or replaced.
   importer never deletes user-created views, filters, navigation entries, or
   records.
 - Raw snapshots and credentials remain outside this directory and public Git.
-- After cutover, a target-bound `clickup-cutover.json` beside the credential file
-  blocks production reimports before any network request. Ongoing Twenty edits
-  must be reconciled deliberately; replaying an old snapshot is not a sync.
+- After cutover, the target-bound marker at
+  `/etc/confenge-gestao/clickup-cutover.json` blocks production reimports before
+  any network request, even when credentials are moved to another directory.
+  An adjacent marker is also checked for other installations. This is an
+  operational interlock for the supported host execution path, not a server
+  permission boundary against older importer versions or deliberate removal.
+  Ongoing Twenty edits must be reconciled deliberately; replaying an old
+  snapshot is not a sync. Production credentials remain on the target host.
 
 ## Snapshot inputs
 

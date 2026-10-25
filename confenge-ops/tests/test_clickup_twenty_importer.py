@@ -699,6 +699,14 @@ class ReconciliationTests(unittest.TestCase):
 
 
 class CutoverLockTests(unittest.TestCase):
+    def setUp(self):
+        self.canonical_directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.canonical_directory.cleanup)
+        self.canonical_marker = Path(self.canonical_directory.name) / "clickup-cutover.json"
+        self.marker_patch = patch.object(importer, "CANONICAL_CUTOVER_MARKER", self.canonical_marker)
+        self.marker_patch.start()
+        self.addCleanup(self.marker_patch.stop)
+
     def test_import_before_cutover_is_allowed(self):
         with tempfile.TemporaryDirectory() as directory:
             importer.assert_import_not_cut_over(Path(directory) / "admin.json", "target-test")
@@ -733,6 +741,26 @@ class CutoverLockTests(unittest.TestCase):
                     (root / "clickup-cutover.json").write_text(json.dumps(state), encoding="utf-8")
                     with self.assertRaises(importer.ContractError):
                         importer.assert_import_not_cut_over(root / "admin.json", "target-test")
+
+    def test_moving_credentials_cannot_bypass_the_production_marker(self):
+        self.canonical_marker.write_text(
+            json.dumps({"target_workspace_id": "target-test"}), encoding="utf-8"
+        )
+        with tempfile.TemporaryDirectory() as other_directory:
+            with self.assertRaisesRegex(importer.ContractError, "reimport is locked"):
+                importer.assert_import_not_cut_over(Path(other_directory) / "admin-copy.json", "target-test")
+
+    def test_invalid_or_unreadable_production_marker_fails_closed(self):
+        with tempfile.TemporaryDirectory() as other_directory:
+            credential = Path(other_directory) / "admin-copy.json"
+            for content in ("{", "[]", '{"target_workspace_id":"other"}'):
+                with self.subTest(content=content):
+                    self.canonical_marker.write_text(content, encoding="utf-8")
+                    with self.assertRaises((ValueError, importer.ContractError)):
+                        importer.assert_import_not_cut_over(credential, "target-test")
+            with patch.object(importer, "load_json", side_effect=PermissionError("unreadable")):
+                with self.assertRaises(PermissionError):
+                    importer.assert_import_not_cut_over(credential, "target-test")
 
 
 if __name__ == "__main__":

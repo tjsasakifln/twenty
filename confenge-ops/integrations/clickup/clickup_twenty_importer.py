@@ -27,6 +27,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 IMPORTER_NAMESPACE = uuid.UUID("ee96e59e-46b7-43d6-b3a1-f6da63f31049")
 APPLY_ACK = "APPLY_CLICKUP_TO_TWENTY"
+CANONICAL_CUTOVER_MARKER = Path("/etc/confenge-gestao/clickup-cutover.json")
 IMPORTER_MARKER = "Managed by confenge-clickup-native-importer/v1"
 COLORS = (
     "blue",
@@ -2956,16 +2957,20 @@ def emit_report(report: dict[str, Any], path: Path | None) -> None:
 
 def assert_import_not_cut_over(credential_file: Path, target_workspace_id: str) -> None:
     # Once Twenty owns ongoing edits, an old source snapshot must not win again.
-    marker = credential_file.resolve().parent / "clickup-cutover.json"
-    if not marker.exists():
-        return
-    state = load_json(marker)
-    if not isinstance(state, dict) or state.get("target_workspace_id") != target_workspace_id:
-        raise ContractError("cutover marker is invalid or belongs to another target; import refused")
-    raise ContractError(
-        "ClickUp reimport is locked by clickup-cutover.json: Twenty owns ongoing edits. "
-        "Reconcile later source changes separately instead of replaying the snapshot."
-    )
+    markers = {
+        CANONICAL_CUTOVER_MARKER,
+        credential_file.resolve().parent / "clickup-cutover.json",
+    }
+    for marker in markers:
+        if not marker.exists() and not marker.is_symlink():
+            continue
+        state = load_json(marker)
+        if not isinstance(state, dict) or state.get("target_workspace_id") != target_workspace_id:
+            raise ContractError("cutover marker is invalid or belongs to another target; import refused")
+        raise ContractError(
+            "ClickUp reimport is locked by clickup-cutover.json: Twenty owns ongoing edits. "
+            "Reconcile later source changes separately instead of replaying the snapshot."
+        )
 
 
 def main(argv: list[str] | None = None) -> int:
